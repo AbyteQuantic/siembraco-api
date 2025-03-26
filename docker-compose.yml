@@ -1,0 +1,14 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  siembraco-api:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - FIREBASE_PROJECT_ID=your-project-id
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
