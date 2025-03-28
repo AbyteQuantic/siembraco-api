@@ -12,6 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { LogoService } from './common/logo/logo.service';
 import { RequestLoggerMiddleware } from './common/logger/request.logger';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -33,7 +34,7 @@ import { RequestLoggerMiddleware } from './common/logger/request.logger';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [
     AppService,
     LogoService,
