@@ -1,21 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { Timestamp } from '@google-cloud/firestore';
 
 export enum UserRole {
-  ADMIN = 'admin',
-  FARMER = 'farmer',
-  CUSTOMER = 'customer',
+  ADMIN = 'ADMIN',
+  USER = 'USER',
+  FARMER = 'FARMER',
+  CUSTOMER = 'CUSTOMER',
 }
 
-export class User {
-  @ApiProperty()
+export interface User {
   uid: string;
-
-  @ApiProperty()
   email: string;
-
-  @ApiProperty({ enum: UserRole })
   role: UserRole;
-
-  @ApiProperty()
-  createdAt: Date;
+  createdAt: Date | Timestamp;
 }

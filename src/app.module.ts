@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { FirebaseModule } from './firebase/firebase.module';
@@ -10,31 +10,41 @@ import { OrdersModule } from './orders/orders.module';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { LogoService } from './common/logo/logo.service';
+import { RequestLoggerMiddleware } from './common/logger/request.logger';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    FirebaseModule,
     AuthModule,
+    UsersModule,
+    ProductsModule,
+    OrdersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: '1h' },
       }),
       inject: [ConfigService],
     }),
-    UsersModule,
-    ProductsModule,
-    OrdersModule,
-    FirebaseModule,
-    ConfigModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    LogoService,
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}
