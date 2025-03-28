@@ -9,9 +9,8 @@ services:
       - NODE_ENV=development
       - FIREBASE_PROJECT_ID=siembraco-api-fr
       - FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@siembraco-api-fr.iam.gserviceaccount.com
-      # No incluyas la PRIVATE_KEY aquí directamente por seguridad
     env_file:
-      - .env  # Cargar el resto desde el archivo .env
+      - .env
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
