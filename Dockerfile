@@ -1,5 +1,4 @@
-# Dockerfile
-FROM node:18-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
@@ -9,4 +8,16 @@ RUN yarn install --frozen-lockfile
 COPY . .
 RUN yarn build
 
-CMD ["yarn", "start:prod"]
+FROM node:20-slim
+
+WORKDIR /usr/src/app
+
+RUN apt-get update && apt-get install -y curl procps && apt-get clean
+
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/package.json ./package.json
+
+EXPOSE 8080
+
+CMD ["node", "dist/main"]

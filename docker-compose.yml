@@ -1,14 +1,17 @@
-# docker-compose.yml
-version: '3.8'
-
 services:
-  siembraco-api:
-    build: .
+  siembraco-api-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - '3000:3000'
     environment:
-      - NODE_ENV=production
-      - FIREBASE_PROJECT_ID=your-project-id
+      - NODE_ENV=development
+      - FIREBASE_PROJECT_ID=siembraco-api-fr
+      - FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@siembraco-api-fr.iam.gserviceaccount.com
+    env_file:
+      - .env
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
+    command: yarn start:dev
