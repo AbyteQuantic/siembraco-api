@@ -1,3 +1,4 @@
+# cloudbuild.yaml
 steps:
   # Instalar dependencias
   - name: 'node:20'
@@ -26,7 +27,12 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/siembraco-repo/siembraco-api:$SHORT_SHA']
 
-  # Desplegar a Cloud Run (SIN USAR --service-account)
+  # Restablecer la configuración de autenticación
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args: ['-c', 'gcloud config unset account']
+
+  # Desplegar a Cloud Run CON cuenta de servicio especificada
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args: [
@@ -37,6 +43,7 @@ steps:
       '--allow-unauthenticated',
       '--set-env-vars', 'NODE_ENV=production,FIREBASE_AUTH_DOMAIN=siembraco-api-fr.firebaseapp.com,FIREBASE_API_KEY=AIzaSyAXhZzaFL2uxevxiC1owTuGe-lL5NV9vyc',
       '--update-secrets', 'FIREBASE_PROJECT_ID=firebase-project-id:latest,FIREBASE_CLIENT_EMAIL=firebase-client-email:latest,FIREBASE_PRIVATE_KEY=firebase-private-key-raw:latest',
+      '--service-account', 'siembraco-cloudrun-sa@siembraco-api-fr.iam.gserviceaccount.com',
       '--min-instances', '0',
       '--max-instances', '2',
       '--memory', '512Mi',
