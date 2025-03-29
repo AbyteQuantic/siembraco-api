@@ -1,0 +1,55 @@
+steps:
+  # Instalar dependencias
+  - name: 'node:20'
+    entrypoint: 'yarn'
+    args: ['install']
+
+  # Ejecutar pruebas
+  - name: 'node:20'
+    entrypoint: 'yarn'
+    args: ['test']
+
+  # Construir la aplicación
+  - name: 'node:20'
+    entrypoint: 'yarn'
+    args: ['build']
+
+  # Construir la imagen Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/siembraco-repo/siembraco-api:$SHORT_SHA',
+      '.'
+    ]
+
+  # Publicar la imagen en Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/siembraco-repo/siembraco-api:$SHORT_SHA']
+
+  # Restablecer la configuración de autenticación
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args: ['-c', 'gcloud config unset account']
+
+  # Desplegar a Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: [
+      'run', 'deploy', 'siembraco-api',
+      '--image', 'us-central1-docker.pkg.dev/$PROJECT_ID/siembraco-repo/siembraco-api:$SHORT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--set-env-vars', 'NODE_ENV=production,FIREBASE_AUTH_DOMAIN=siembraco-api-fr.firebaseapp.com,FIREBASE_API_KEY=AIzaSyAXhZzaFL2uxevxiC1owTuGe-lL5NV9vyc',
+      '--update-secrets', 'FIREBASE_PROJECT_ID=firebase-project-id:latest,FIREBASE_CLIENT_EMAIL=firebase-client-email:latest,FIREBASE_PRIVATE_KEY=firebase-private-key-raw:latest',
+      '--min-instances', '0',
+      '--max-instances', '2',
+      '--memory', '512Mi',
+      '--cpu', '1',
+      '--timeout', '300s'
+    ]
+
+# Opciones
+timeout: '1800s'
+options:
+  logging: CLOUD_LOGGING_ONLY
