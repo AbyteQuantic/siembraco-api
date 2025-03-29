@@ -11,71 +11,118 @@ export class FirebaseService {
   constructor() {
     this.logger.log('Iniciando FirebaseService');
 
-    // Verificamos variables de entorno para diagnóstico
-    this.logger.log(
-      'FIREBASE_PROJECT_ID:',
-      process.env.FIREBASE_PROJECT_ID ? 'Definido' : 'No definido',
-    );
-    this.logger.log(
-      'FIREBASE_CLIENT_EMAIL:',
-      process.env.FIREBASE_CLIENT_EMAIL ? 'Definido' : 'No definido',
-    );
-    this.logger.log(
-      'FIREBASE_PRIVATE_KEY:',
-      process.env.FIREBASE_PRIVATE_KEY
-        ? 'Definido (longitud: ' + process.env.FIREBASE_PRIVATE_KEY.length + ')'
-        : 'No definido',
-    );
-
     try {
-      // Configuramos Firebase Admin con las credenciales disponibles
-      if (admin.apps.length === 0) {
-        const config: admin.AppOptions = {};
+      // Si ya hay apps inicializadas, no hacemos nada
+      if (admin.apps.length > 0) {
+        this.logger.log('Firebase Admin ya está inicializado');
+        this.db = admin.firestore();
+        this.firestore = this.db;
+        this.auth = admin.auth();
+        return;
+      }
 
-        // Si tenemos el ID del proyecto, lo usamos para la configuración mínima
-        if (process.env.FIREBASE_PROJECT_ID) {
-          config.projectId = process.env.FIREBASE_PROJECT_ID;
+      // Registramos variables para depuración
+      this.logger.log(
+        'FIREBASE_PROJECT_ID:',
+        process.env.FIREBASE_PROJECT_ID ?? 'No definido',
+      );
+
+      // Configurar credenciales
+      let appConfig: admin.AppOptions = {};
+
+      // Para entorno de desarrollo local con variables .env
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.log('Inicializando Firebase en modo desarrollo');
+
+        // Procesar la clave privada para asegurar formato correcto
+        let privateKey = process.env.FIREBASE_PRIVATE_KEY ?? '';
+
+        // Si la clave tiene comillas al inicio y final, quitarlas
+        if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+          privateKey = privateKey.slice(1, -1);
         }
 
-        // Si tenemos todas las credenciales, usamos la autenticación completa
+        // Asegurar que los \n se convierten a saltos de línea reales
+        privateKey = privateKey.replace(/\\n/g, '\n');
+
+        if (
+          process.env.FIREBASE_PROJECT_ID &&
+          process.env.FIREBASE_CLIENT_EMAIL &&
+          privateKey
+        ) {
+          try {
+            appConfig = {
+              credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: privateKey,
+              }),
+            };
+            this.logger.log('Configuración completa para Firebase Admin');
+          } catch (error) {
+            this.logger.error(
+              'Error al procesar credenciales de Firebase:',
+              error,
+            );
+            // Fallback a configuración mínima
+            appConfig = { projectId: process.env.FIREBASE_PROJECT_ID };
+          }
+        } else {
+          // Configuración mínima
+          this.logger.warn('Usando configuración mínima para Firebase');
+          appConfig = { projectId: process.env.FIREBASE_PROJECT_ID };
+        }
+      }
+      // Para entorno de producción con secretos de GCP
+      else {
+        this.logger.log('Inicializando Firebase en modo producción');
+
+        // En producción, los secretos ya deberían estar correctamente formateados
         if (
           process.env.FIREBASE_PROJECT_ID &&
           process.env.FIREBASE_CLIENT_EMAIL &&
           process.env.FIREBASE_PRIVATE_KEY
         ) {
-          let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-          // Procesamos la clave privada si es necesario
-          if (
-            privateKey &&
-            !privateKey.includes('-----BEGIN PRIVATE KEY-----')
-          ) {
-            privateKey = privateKey.replace(/\\n/g, '\n');
+          try {
+            appConfig = {
+              credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY,
+              }),
+            };
+          } catch (error) {
+            this.logger.error(
+              'Error al procesar credenciales de Firebase en producción:',
+              error,
+            );
+            // Fallback a configuración mínima
+            appConfig = { projectId: process.env.FIREBASE_PROJECT_ID };
           }
-
-          config.credential = admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: privateKey,
-          });
-
-          this.logger.log(
-            'Inicializando Firebase Admin con credenciales completas',
-          );
         } else {
+          // Configuración mínima para GCP
           this.logger.warn(
-            'Inicializando Firebase Admin con credenciales parciales',
+            'Usando configuración mínima para Firebase en producción',
           );
+          appConfig = { projectId: process.env.FIREBASE_PROJECT_ID };
         }
-
-        admin.initializeApp(config);
-        this.logger.log('Firebase Admin inicializado correctamente');
       }
+
+      // Inicializar Firebase Admin
+      admin.initializeApp(appConfig);
+      this.logger.log('Firebase Admin inicializado correctamente');
     } catch (error) {
       this.logger.error('Error al inicializar Firebase Admin:', error);
+      throw error;
     }
 
-    this.db = admin.firestore();
-    this.firestore = this.db;
-    this.auth = admin.auth();
+    try {
+      this.db = admin.firestore();
+      this.firestore = this.db; // Asignar alias
+      this.auth = admin.auth();
+    } catch (error) {
+      this.logger.error('Error al acceder a servicios de Firebase:', error);
+      throw error;
+    }
   }
 }
